@@ -1,12 +1,10 @@
 // API layer — all HTTP calls to the Express backend live here
-// Keeps fetch logic separate from UI (App.tsx stays readable)
-
 import type { Workout, WorkoutFormData } from '../types/workout';
 
-// Vite env var; defaults to local backend. Set VITE_API_URL in production (Render URL)
+// Vite env var; defaults to local backend. Set VITE_API_URL in production
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-// READ — GET /api/workouts (optional ?type= filter)
+// GET /api/workouts (optional ?type= filter)
 export async function fetchWorkouts(type?: string): Promise<Workout[]> {
   const url = type
     ? `${API_URL}/api/workouts?type=${encodeURIComponent(type)}`
@@ -17,7 +15,7 @@ export async function fetchWorkouts(type?: string): Promise<Workout[]> {
   return res.json(); // parse JSON body into Workout[]
 }
 
-// CREATE — POST /api/workouts
+// POST /api/workouts
 export async function createWorkout(data: WorkoutFormData): Promise<Workout> {
   const res = await fetch(`${API_URL}/api/workouts`, {
     method: 'POST',

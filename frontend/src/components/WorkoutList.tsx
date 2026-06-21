@@ -1,6 +1,7 @@
 import WorkoutForm from './WorkoutForm';
 import { WORKOUT_TYPES, type Workout, type WorkoutFormData } from '../types/workout';
 
+// Props for WorkoutList component
 type Props = {
   workouts: Workout[];
   loading: boolean;
@@ -14,6 +15,7 @@ type Props = {
   onDelete: (id: number) => void;
 };
 
+// WorkoutList component
 export default function WorkoutList({
   workouts,
   loading,
@@ -27,6 +29,7 @@ export default function WorkoutList({
   onDelete,
 }: Props) {
   return (
+    // Main workout list section
     <section className="card">
       <div className="list-header">
         <h2>Your Workouts</h2>
@@ -38,12 +41,14 @@ export default function WorkoutList({
         </select>
       </div>
 
+      {/* Loading, error, and no workouts messages */}
       {loading && <p className="message">Loading workouts...</p>}
       {!loading && error && <p className="message error">{error}</p>}
       {!loading && !error && workouts.length === 0 && (
         <p className="message">No workouts yet. Add one above!</p>
       )}
 
+      {/* Workout list */}
       <ul className="workout-list">
         {workouts.map((workout) => (
           <li key={workout.id}>
@@ -60,6 +65,7 @@ export default function WorkoutList({
                 onCancel={onCancelEdit}
               />
             ) : (
+              // Workout row
               <div className="workout-row">
                 <div>
                   <h3>{workout.name}</h3>

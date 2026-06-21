@@ -1,7 +1,4 @@
 // Magnifit Backend — Express API + PostgreSQL (Supabase)
-// Flow: React (port 5173) → HTTP requests → this server (port 3001) → Supabase DB
-// This file is your CRUD API: Create, Read, Update, Delete workouts.
-
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';

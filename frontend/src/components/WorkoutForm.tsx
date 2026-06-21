@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { WORKOUT_TYPES, type WorkoutFormData } from '../types/workout';
 
+// Props for WorkoutForm component
 type Props = {
   initial: WorkoutFormData;
   submitLabel: string;
@@ -17,6 +18,7 @@ export default function WorkoutForm({ initial, submitLabel, onSubmit, onCancel }
   };
 
   return (
+    // Workout form
     <form onSubmit={handleSubmit} className="form-grid">
       <label>
         Name
@@ -27,6 +29,7 @@ export default function WorkoutForm({ initial, submitLabel, onSubmit, onCancel }
         />
       </label>
 
+      {/* Type dropdown */}
       <label>
         Type
         <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
@@ -36,6 +39,7 @@ export default function WorkoutForm({ initial, submitLabel, onSubmit, onCancel }
         </select>
       </label>
 
+      {/* Duration input */}
       <label>
         Duration (min)
         <input
@@ -47,6 +51,7 @@ export default function WorkoutForm({ initial, submitLabel, onSubmit, onCancel }
         />
       </label>
 
+      {/* Date input */}
       <label>
         Date
         <input
