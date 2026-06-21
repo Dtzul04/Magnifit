@@ -1,5 +1,7 @@
 # Magnifit
 
+**Live demo:** [magnifit.vercel.app](https://magnifit.vercel.app/)
+
 A full-stack workout tracker (Magnify + Fitness) built with React, Express, TypeScript, and PostgreSQL.
 
 Track workouts by name, type, duration, and date — with full create, read, update, and delete support.
