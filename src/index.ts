@@ -11,8 +11,26 @@ const app = express();
 const PORT = process.env.PORT || 3001; // Render sets PORT in production
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-// CORS: browser blocks requests from localhost:5173 → localhost:3001 unless we allow it
-app.use(cors({ origin: FRONTEND_URL }));
+// CORS: browser blocks frontend → API unless origin is allowed.
+// In local dev Vite may jump to 5174+ if 5173 is taken.
+const allowedOrigins = [
+  FRONTEND_URL,
+  'http://localhost:5173',
+  'http://localhost:5174',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5174',
+];
+
+app.use(cors({
+  origin(origin, callback) {
+    // non-browser tools (curl, Postman) send no Origin
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+}));
 
 // Parses JSON request bodies so req.body works on POST/PUT (like express.json() reading fetch body)
 app.use(express.json());
