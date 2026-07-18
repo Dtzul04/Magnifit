@@ -3,16 +3,25 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { Pool } from 'pg';
+import {
+  getWorkouts, 
+  createWorkout,
+  updateWorkout,
+  deleteWorkout,
+} from './store/workouts';
 
 // Load secrets from .env (DATABASE_URL, etc.) into process.env
 dotenv.config();
 
+// use mock data if USE_MOCK is true
+const useMock = process.env.USE_MOCK === 'true' || !process.env.DATABASE_URL;
+
+// initialize express app
 const app = express();
 const PORT = process.env.PORT || 3001; // Render sets PORT in production
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
-// CORS: browser blocks frontend → API unless origin is allowed.
-// In local dev Vite may jump to 5174+ if 5173 is taken.
+// Allowed origins for CORS
 const allowedOrigins = [
   FRONTEND_URL,
   'http://localhost:5173',
@@ -36,27 +45,40 @@ app.use(cors({
 app.use(express.json());
 
 // Pool = reusable connection group to Postgres (better than opening a new connection every request)
-// ssl required for Supabase; Session pooler URI goes in DATABASE_URL
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-});
+const pool = useMock
+  ? null
+  : new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  })
 
-// --- HEALTH CHECK (Render pings this) ---
+// Health check
 app.get('/', (_req, res) => {
   res.json({ status: 'Magnifit API running' });
 });
 
-// GET /api/workouts          → all workouts
-// GET /api/workouts?type=Cardio → WHERE type = 'Cardio' (same SQL you practiced in Session 1)
+// Get /api/workouts → all workouts
 app.get('/api/workouts', async (req, res) => {
+  // Get workouts if using mock data
+  if (useMock) {
+    const { type } = req.query;
+    const rows = getWorkouts(type as string | undefined);
+    res.json(rows);
+    return;
+  }
+
+  // Check if database connection is established
+  if (!pool) {
+    res.status(500).json({ error: 'Database connection not established' });
+    return;
+  }
+
+  // Get workouts if using PostgreSQL
   try {
     const { type } = req.query;
-
     const { rows } = type
       ? await pool.query('SELECT * FROM workouts WHERE type = $1 ORDER BY workout_date DESC', [type])
       : await pool.query('SELECT * FROM workouts ORDER BY workout_date DESC');
-
     res.json(rows); 
   } catch (error) {
     console.error(error);
@@ -66,6 +88,25 @@ app.get('/api/workouts', async (req, res) => {
 
 // POST /api/workouts with JSON body { name, type, duration, workout_date }
 app.post('/api/workouts', async (req, res) => {
+  // Creat workout if using mock data
+  if (useMock) {
+    const { name, type, duration, workout_date} = req.body;
+    if (!name || !type || !duration || !workout_date) {
+      res.status(400).json({ error: 'All field are required' });
+      return;
+    }
+    const row = createWorkout({name, type, duration, workout_date });
+    res.status(201).json(row);
+    return;
+  }
+
+  // Check if database connection is established
+  if (!pool) {
+    res.status(500).json({ error: 'Database connectioncannot be established'});
+    return;
+  }
+
+  // Create workout if using PostgreSQL
   try {
     const { name, type, duration, workout_date } = req.body;
 
@@ -90,10 +131,31 @@ app.post('/api/workouts', async (req, res) => {
 
 // PUT /api/workouts/5 → update workout with id 5
 app.put('/api/workouts/:id', async (req, res) => {
+  // Use Id to update workout if using mock data
+  const { id } = req.params;
+
+  // Update workout using mock data
+  if (useMock) {
+    const updated = updateWorkout(Number(id), req.body);
+    if  (!updated) {
+      res.status(404).json({ error: 'Workout not found'});
+      return;
+    } else {
+      res.json(updated);
+      return;
+    }
+  }
+
+  // Check if database connection is established
+  if (!pool) {
+    res.status(500).json({ error: 'Database connection cannot be established'});
+    return;
+  }
+
+  // Update workout if using PostgreSQL
   try {
     const { id } = req.params;
     const { name, type, duration, workout_date } = req.body;
-
     const { rows } = await pool.query(
       `UPDATE workouts
        SET name = $1, type = $2, duration = $3, workout_date = $4
@@ -116,6 +178,29 @@ app.put('/api/workouts/:id', async (req, res) => {
 
 // Delete a workout /api/workouts/5 → remove workout with id 5
 app.delete('/api/workouts/:id', async (req, res) => {
+
+  // Use Id to delete workout if using mock data
+  const { id } = req.params;
+
+  // Delete workout using mock data
+  if (useMock) {
+    const deleted = deleteWorkout(Number(id));
+    if (!deleted) {
+      res.status(404).json({ error: 'Workout not found'});
+      return;
+    } else {
+      res.json(deleted);
+      return;
+    }
+  }
+
+  // Check if database connection is established
+  if (!pool) {
+    res.status(500).json({ error: 'Database connection cannot be established'});
+    return;
+  }
+
+  // Delete workout if using PostgreSQL
   try {
     const { id } = req.params;
 
@@ -138,4 +223,5 @@ app.delete('/api/workouts/:id', async (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on ${PORT}`);
+  console.log(useMock ? 'Using mock workout store' : 'Using PostgreSQL');
 });

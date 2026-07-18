@@ -2,22 +2,31 @@
 
 **Live demo:** [magnifit.vercel.app](https://magnifit.vercel.app/)
 
-A full-stack workout tracker (Magnify + Fitness) built with React, Express, TypeScript, and PostgreSQL.
+A full-stack workout tracker (Magnify + Fitness) built with React, Express, and TypeScript.
 
 Track workouts by name, type, duration, and date — with full create, read, update, and delete support.
 
+## How data works
+
+| Mode | When | Notes |
+| ---- | ---- | ----- |
+| **Mock (default)** | `USE_MOCK=true` or no `DATABASE_URL` | In-memory store in `src/store/workouts.ts`. No database setup. Live demo uses this. Data resets when the API server restarts. |
+| **PostgreSQL (optional)** | `USE_MOCK=false` + `DATABASE_URL` | Real SQL via Supabase (or any Postgres). For local practice or your own deploy. |
+
+Same REST API and frontend either way.
+
 ## Tech Stack
 
-| Layer    | Tools                           |
-| -------- | ------------------------------- |
+| Layer    | Tools                                |
+| -------- | ------------------------------------ |
 | Frontend | React, TypeScript, Tailwind CSS, Vite |
-| Backend  | Node.js, Express, TypeScript    |
-| Database | PostgreSQL (Supabase)           |
+| Backend  | Node.js, Express, TypeScript         |
+| Data     | Mock store (default) or PostgreSQL   |
 
 ## Features
 
 - View all workouts
-- Filter by type (Cardio, Strength, Flexibility, Sports)
+- Filter by type
 - Add, edit, and delete workouts
 - Full CRUD REST API
 - Loading, empty, and error states in the UI
@@ -26,29 +35,41 @@ Track workouts by name, type, duration, and date — with full create, read, upd
 
 ```
 Magnifit/
-├── src/index.ts          # Express API (backend)
-├── frontend/             # React app (Vite)
-│   └── src/
-│       ├── App.tsx       # Main UI
-│       ├── api/          # fetch calls to backend
-│       └── types/        # TypeScript interfaces
-├── .env.example          # Backend env template
+├── src/
+│   ├── index.ts          # Express API (mock or Postgres)
+│   └── store/workouts.ts # In-memory mock CRUD
+├── frontend/             # React app (Vite) → deploys to Vercel
+├── .env.example
 └── README.md
 ```
 
-## Database Schema
+## Local Setup (mock — fastest)
 
-**Table: `workouts`**
+```bash
+cp .env.example .env
+# USE_MOCK=true is already set in .env.example
 
-| Column         | Type    | Notes                    |
-| -------------- | ------- | ------------------------ |
-| `id`           | SERIAL  | Primary key (auto)       |
-| `name`         | TEXT    | Workout name             |
-| `type`         | TEXT    | e.g. Cardio, Strength    |
-| `duration`     | INTEGER | Duration in minutes      |
-| `workout_date` | DATE    | When the workout happened |
+npm install
+npm run dev
+```
 
-**Example SQL** (run in Supabase SQL Editor):
+API: `http://localhost:3001`
+
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
+```
+
+App: `http://localhost:5173`
+
+You should see seed workouts with no database.
+
+## Optional: PostgreSQL
+
+1. Create a Supabase project (or local Postgres)
+2. Run:
 
 ```sql
 CREATE TABLE workouts (
@@ -60,53 +81,25 @@ CREATE TABLE workouts (
 );
 ```
 
-## Local Setup
+3. In `.env`:
 
-### 1. Database (Supabase)
-
-1. Create a project at [supabase.com](https://supabase.com)
-2. Run the `CREATE TABLE` SQL above (+ optional seed `INSERT`s)
-3. In **Connect** → choose **Session pooler** → copy the URI
-4. Create `.env` from `.env.example` and paste your URI
-5. URL-encode special characters in the password (`!` → `%21`, `#` → `%23`, `$` → `%24`)
-
-> Use **Session pooler**, not Direct connection — Direct often fails on home networks.
-
-### 2. Backend
-
-```bash
-cp .env.example .env
-# Edit .env: DATABASE_URL, FRONTEND_URL=http://localhost:5173
-
-npm install
-npm run dev
+```env
+USE_MOCK=false
+DATABASE_URL=your_session_pooler_uri
+FRONTEND_URL=http://localhost:5173
 ```
 
-Runs at `http://localhost:3001`
-
-### 3. Frontend
-
-```bash
-cd frontend
-cp .env.example .env
-# VITE_API_URL=http://localhost:3001 (default)
-
-npm install
-npm run dev
-```
-
-Runs at `http://localhost:5173`
-
-**Keep both servers running** while developing.
+4. Prefer Supabase **Session pooler** URI; URL-encode special chars in the password (`!` → `%21`).
 
 ## Environment Variables
 
-| Variable       | Where    | Description                          |
-| -------------- | -------- | ------------------------------------ |
-| `DATABASE_URL` | Backend  | Supabase Session pooler URI          |
-| `FRONTEND_URL` | Backend  | Frontend origin for CORS             |
-| `PORT`         | Backend  | Server port (default `3001`)         |
-| `VITE_API_URL` | Frontend | Backend URL (default `localhost:3001`) |
+| Variable       | Where    | Description                                      |
+| -------------- | -------- | ------------------------------------------------ |
+| `USE_MOCK`     | Backend  | `true` = in-memory store (default for demo)      |
+| `DATABASE_URL` | Backend  | Postgres URI (only if `USE_MOCK=false`)          |
+| `FRONTEND_URL` | Backend  | Frontend origin for CORS (e.g. Vercel URL)       |
+| `PORT`         | Backend  | Server port (default `3001`)                     |
+| `VITE_API_URL` | Frontend | Backend API URL                                  |
 
 ## API Endpoints
 
@@ -120,20 +113,23 @@ Runs at `http://localhost:5173`
 
 ## Deploy
 
-### Backend (Render)
-
-1. Connect GitHub repo → new **Web Service**
-2. Root directory: `/` (project root)
-3. Build: `npm install && npm run build`
-4. Start: `npm start`
-5. Env vars: `DATABASE_URL`, `FRONTEND_URL` (your Vercel URL)
-
 ### Frontend (Vercel)
 
-1. Import repo → set root directory to `frontend`
-2. Build: `npm run build`
-3. Output: `dist`
-4. Env var: `VITE_API_URL` (your Render backend URL, e.g. `https://magnifit-api.onrender.com`)
+1. Import repo → root directory `frontend`
+2. Build: `npm run build` · Output: `dist`
+3. Env: `VITE_API_URL` = your API URL (e.g. `https://magnifit-api.onrender.com`)
+
+### Backend (API host)
+
+Express still runs as a Node server (e.g. Render Web Service):
+
+1. Build: `npm install && npm run build` · Start: `npm start`
+2. Env for the **live demo**:
+   - `USE_MOCK=true`
+   - `FRONTEND_URL=https://magnifit.vercel.app`
+3. Optional Postgres: `USE_MOCK=false` + `DATABASE_URL`
+
+> The Vercel site is the UI. Set `USE_MOCK` on the **API** service, not in the frontend env.
 
 ## Author
 
