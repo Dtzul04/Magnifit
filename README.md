@@ -1,3 +1,5 @@
+[![CI](https://github.com/Dtzul04/Magnifit/actions/workflows/ci.yml/badge.svg)](https://github.com/Dtzul04/Magnifit/actions/workflows/ci.yml)
+
 # Magnifit
 
 **Live demo:** [magnifit.vercel.app](https://magnifit.vercel.app/)
