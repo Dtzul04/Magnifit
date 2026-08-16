@@ -12,7 +12,7 @@ Track workouts by name, type, duration, and date — with full create, read, upd
 
 | Mode | When | Notes |
 | ---- | ---- | ----- |
-| **Mock (default)** | `USE_MOCK=true` or no `DATABASE_URL` | In-memory store in `src/store/workouts.ts`. No database setup. Live demo uses this. Data resets when the API server restarts. |
+| **Mock (default)** | `USE_MOCK=true` or no `DATABASE_URL` | In-memory store in `apps/api/src/store/workouts.ts`. No database setup. Live demo uses this. Data resets when the API server restarts. |
 | **PostgreSQL (optional)** | `USE_MOCK=false` + `DATABASE_URL` | Real SQL via Supabase (or any Postgres). For local practice or your own deploy. |
 
 Same REST API and frontend either way.
@@ -37,17 +37,18 @@ Same REST API and frontend either way.
 
 ```
 Magnifit/
-├── src/
-│   ├── index.ts          # Express API (mock or Postgres)
-│   └── store/workouts.ts # In-memory mock CRUD
-├── frontend/             # React app (Vite) → deploys to Vercel
-├── .env.example
+├── apps/
+│   ├── api/              # Express → Render (root directory apps/api)
+│   └── web/              # Vite + React → Vercel (root directory apps/web)
+├── packages/shared/      # reserved for shared types
+├── .github/workflows/ci.yml
 └── README.md
 ```
 
 ## Local Setup (mock — fastest)
 
 ```bash
+cd apps/api
 cp .env.example .env
 # USE_MOCK=true is already set in .env.example
 
@@ -58,7 +59,7 @@ npm run dev
 API: `http://localhost:3001`
 
 ```bash
-cd frontend
+cd apps/web
 cp .env.example .env
 npm install
 npm run dev
@@ -83,7 +84,7 @@ CREATE TABLE workouts (
 );
 ```
 
-3. In `.env`:
+3. In `apps/api/.env`:
 
 ```env
 USE_MOCK=false
@@ -117,13 +118,13 @@ FRONTEND_URL=http://localhost:5173
 
 ### Frontend (Vercel)
 
-1. Import repo → root directory `frontend`
+1. Import repo → root directory `apps/web`
 2. Build: `npm run build` · Output: `dist`
 3. Env: `VITE_API_URL` = your API URL (e.g. `https://magnifit-api.onrender.com`)
 
-### Backend (API host)
+### Backend (Render)
 
-Express still runs as a Node server (e.g. Render Web Service):
+Web Service, root directory `apps/api`:
 
 1. Build: `npm install && npm run build` · Start: `npm start`
 2. Env for the **live demo**:
