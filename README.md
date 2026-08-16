@@ -136,3 +136,7 @@ Express still runs as a Node server (e.g. Render Web Service):
 ## Author
 
 Daniel — full-stack development practice project.
+
+## License
+
+ISC 
