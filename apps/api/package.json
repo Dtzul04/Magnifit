@@ -1,5 +1,5 @@
 {
-  "name": "magnifit",
+  "name": "api",
   "version": "1.0.0",
   "description": "> **Work in progress** — database setup complete; backend and frontend coming next.",
   "main": "index.js",
