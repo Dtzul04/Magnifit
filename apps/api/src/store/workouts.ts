@@ -1,3 +1,12 @@
+import { Pool } from 'pg';
+
+const useMock = process.env.USE_MOCK === 'true' || !process.env.DATABASE_URL;
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+});
+
 // workout type
 export type Workout = {
     id: number;
@@ -36,11 +45,21 @@ let workouts: Workout[] = [
 let nextId = 4;
 
 // get all workouts or filter by type
-export function getWorkouts(type?: string): Workout[] {
-    if (!type) {
-        return [...workouts];
+export async function getWorkouts(type?: string): Promise<Workout[]> {
+    if (useMock) {
+        if (!type) {
+            return [...workouts];
+        }
+        return workouts.filter((w) => w.type === type);
     }
-    return workouts.filter((w) => w.type === type);
+
+    if (!type) {
+        const result = await pool.query('SELECT * FROM workouts ORDER BY workout_date DESC');
+        return result.rows;
+    } else {
+        const result = await pool.query('SELECT * FROM workouts WHERE type = $1 ORDER BY workout_date DESC', [type]);
+        return result.rows;
+    }
 }
 
 // create a new workout

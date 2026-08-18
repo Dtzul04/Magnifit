@@ -10,11 +10,10 @@ import {
   deleteWorkout,
 } from './store/workouts';
 
+const useMock = process.env.USE_MOCK === 'true' || !process.env.DATABASE_URL;
+
 // Load secrets from .env (DATABASE_URL, etc.) into process.env
 dotenv.config();
-
-// use mock data if USE_MOCK is true
-const useMock = process.env.USE_MOCK === 'true' || !process.env.DATABASE_URL;
 
 // initialize express app
 const app = express();
@@ -59,31 +58,9 @@ app.get('/', (_req, res) => {
 
 // Get /api/workouts → all workouts
 app.get('/api/workouts', async (req, res) => {
-  // Get workouts if using mock data
-  if (useMock) {
-    const { type } = req.query;
-    const rows = getWorkouts(type as string | undefined);
-    res.json(rows);
-    return;
-  }
-
-  // Check if database connection is established
-  if (!pool) {
-    res.status(500).json({ error: 'Database connection not established' });
-    return;
-  }
-
-  // Get workouts if using PostgreSQL
-  try {
-    const { type } = req.query;
-    const { rows } = type
-      ? await pool.query('SELECT * FROM workouts WHERE type = $1 ORDER BY workout_date DESC', [type])
-      : await pool.query('SELECT * FROM workouts ORDER BY workout_date DESC');
-    res.json(rows); 
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  const { type } =  req.query as {type?: string};
+  const rows = await getWorkouts(type);
+  res.json(rows);
 });
 
 // POST /api/workouts with JSON body { name, type, duration, workout_date }
