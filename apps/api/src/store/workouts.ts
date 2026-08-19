@@ -62,22 +62,24 @@ export async function getWorkouts(type?: string): Promise<Workout[]> {
     }
 }
 
-// create a new workout
-export function createWorkout(data: {
-    name: string;
-    type: string;
-    duration: number;
-    workout_date: string;
-}): Workout {
-    const workout: Workout = {
-        id: nextId++,
-        name: data.name,
-        type: data.type,
-        duration: data.duration,
-        workout_date: data.workout_date,
+// create a new workout in the database
+export async function createWorkout(data: { name: string; type: string; duration: number; workout_date: string; }): Promise<Workout> {
+    if (useMock) {
+        const workout: Workout = {
+            id: nextId++,
+            name: data.name,
+            type: data.type,
+            duration: data.duration,
+            workout_date: data.workout_date,
+        }
+        workouts.push(workout);
+        return workout;
     }
-    workouts.push(workout);
-    return workout;
+    const result = await pool.query (
+        `INSERT INTO workouts (name, type, duration, workout_date) VALUES ($1, $2, $3, $4) RETURNING *`,
+        [data.name, data.type, data.duration, data.workout_date]
+    );
+    return result.rows[0];
 }
 
 // update a workout

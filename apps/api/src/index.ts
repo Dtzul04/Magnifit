@@ -10,17 +10,20 @@ import {
   deleteWorkout,
 } from './store/workouts';
 
-const useMock = process.env.USE_MOCK === 'true' || !process.env.DATABASE_URL;
-
-// Load secrets from .env (DATABASE_URL, etc.) into process.env
 dotenv.config();
 
-// initialize express app
 const app = express();
 const PORT = process.env.PORT || 3001; // Render sets PORT in production
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const useMock = process.env.USE_MOCK === 'true' || !process.env.DATABASE_URL;
 
-// Allowed origins for CORS
+const pool = useMock
+  ? null
+  : new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false }
+  })
+
 const allowedOrigins = [
   FRONTEND_URL,
   'http://localhost:5173',
@@ -31,7 +34,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin(origin, callback) {
-    // non-browser tools (curl, Postman) send no Origin
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
@@ -40,70 +42,31 @@ app.use(cors({
   },
 }));
 
-// Parses JSON request bodies so req.body works on POST/PUT (like express.json() reading fetch body)
 app.use(express.json());
-
-// Pool = reusable connection group to Postgres (better than opening a new connection every request)
-const pool = useMock
-  ? null
-  : new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
-  })
 
 // Health check
 app.get('/', (_req, res) => {
   res.json({ status: 'Magnifit API running' });
 });
 
-// Get /api/workouts → all workouts
+// GET /api/workouts [type]
 app.get('/api/workouts', async (req, res) => {
   const { type } =  req.query as {type?: string};
   const rows = await getWorkouts(type);
   res.json(rows);
 });
 
-// POST /api/workouts with JSON body { name, type, duration, workout_date }
+// POST /api/workouts with JSON body [name, type, duration, workout_date]
 app.post('/api/workouts', async (req, res) => {
-  // Creat workout if using mock data
-  if (useMock) {
-    const { name, type, duration, workout_date} = req.body;
-    if (!name || !type || !duration || !workout_date) {
-      res.status(400).json({ error: 'All field are required' });
-      return;
-    }
-    const row = createWorkout({name, type, duration, workout_date });
-    res.status(201).json(row);
+  const { name, type, duration, workout_date } = req.body;
+
+  if (!name || !type || !duration || !workout_date) {
+    res.status(400).json({ error: 'All fields are required'});
     return;
   }
 
-  // Check if database connection is established
-  if (!pool) {
-    res.status(500).json({ error: 'Database connectioncannot be established'});
-    return;
-  }
-
-  // Create workout if using PostgreSQL
-  try {
-    const { name, type, duration, workout_date } = req.body;
-
-    if (!name || !type || !duration || !workout_date) {
-      res.status(400).json({ error: 'All fields are required' });
-      return;
-    }
-
-    const { rows } = await pool.query(
-      `INSERT INTO workouts (name, type, duration, workout_date)
-       VALUES ($1, $2, $3, $4)
-       RETURNING *`,
-      [name, type, duration, workout_date]
-    );
-
-    res.status(201).json(rows[0]); // 201 = "Created"
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+  const row = await createWorkout({name, type, duration, workout_date});
+  res.status(201).json(row);
 });
 
 // PUT /api/workouts/5 → update workout with id 5
