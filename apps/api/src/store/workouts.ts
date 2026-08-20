@@ -2,6 +2,7 @@ import { Pool } from 'pg';
 
 const useMock = process.env.USE_MOCK === 'true' || !process.env.DATABASE_URL;
 
+// Configure PostgreSQL connection
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -62,45 +63,65 @@ export async function getWorkouts(type?: string): Promise<Workout[]> {
     }
 }
 
-// create a new workout
-export function createWorkout(data: {
-    name: string;
-    type: string;
-    duration: number;
-    workout_date: string;
-}): Workout {
-    const workout: Workout = {
-        id: nextId++,
-        name: data.name,
-        type: data.type,
-        duration: data.duration,
-        workout_date: data.workout_date,
+// create a new workout in the database
+export async function createWorkout(data: { name: string; type: string; duration: number; workout_date: string; }): Promise<Workout> {
+    if (useMock) {
+        const workout: Workout = {
+            id: nextId++,
+            name: data.name,
+            type: data.type,
+            duration: data.duration,
+            workout_date: data.workout_date,
+        }
+        workouts.push(workout);
+        return workout;
     }
-    workouts.push(workout);
-    return workout;
+    const result = await pool.query (
+        `INSERT INTO workouts (name, type, duration, workout_date) VALUES ($1, $2, $3, $4) RETURNING *`,
+        [data.name, data.type, data.duration, data.workout_date]
+    );
+    return result.rows[0];
 }
 
 // update a workout
-export function updateWorkout(id: number, data: {
-    name: string;
-    type: string;
-    duration: number;
-    workout_date: string;
-}): Workout | null {
-    const index = workouts.findIndex((w) => w.id === id);
-    if (index === -1) {    
-        return null;
+export async function updateWorkout(id: number, data: {name: string; type: string; duration: number; workout_date: string; }): Promise<Workout | null> {
+    if (useMock) {
+        const index = workouts.findIndex((w) => w.id === id);
+        if (index === -1) {
+            return null;
+        }
+        workouts[index] = { id, ...data };
+        return workouts[index];
+    } else {
+        const result = await pool.query(
+            `UPDATE workouts SET name = $1, type = $2, duration = $3, workout_date = $4 WHERE id = $5 RETURNING *`,
+            [data.name, data.type, data.duration, data.workout_date, id]
+        )
+        if (result.rowCount === 0) {
+            return null;
+        }
+        return result.rows[0];
     }
-    workouts[index] = {id, ...data }
-    return workouts[index];
 }
 
-export function deleteWorkout(id: number): Workout | null {
-    const index = workouts.findIndex((w) => w.id === id);
-
-    if (index ===-1) {
-        return null;
+// delete a workout
+export async function deleteWorkout(id: number): Promise<Workout | null> {
+    if (useMock) {
+        const index = workouts.findIndex((w) => w.id === id);
+        if (index === -1) {
+            return null;
+        }
+        const [deleted] = workouts.splice(index, 1);   
+        return deleted;
+    } else {
+        const result = await pool.query(
+            `DELETE FROM workouts WHERE id = $1 RETURNING *`,
+            [id]
+        );
+        
+        if (result.rowCount === 0) {
+            return null;
+        }
+        return result.rows[0];
     }
-    const [removed] = workouts.splice(index, 1);
-    return removed;
 }
