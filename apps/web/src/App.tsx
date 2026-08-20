@@ -28,20 +28,32 @@ function App() {
   }, [filter]);
 
   async function handleCreate(data: WorkoutFormData) {
-    await createWorkout(data);
-    await loadWorkouts();
+    try {
+      await createWorkout(data);
+      await loadWorkouts();
+    } catch (error) {
+      setError('Failed to create workout');
+    }
   }
 
   async function handleUpdate(id: number, data: WorkoutFormData) {
+    try {
     await updateWorkout(id, data);
     setEditingId(null);
     await loadWorkouts();
+    } catch (error) {
+      setError('Failed to update workout');
+    }
   }
 
   async function handleDelete(id: number) {
-    if (!confirm('Delete this workout?')) return;
-    await deleteWorkout(id);
-    await loadWorkouts();
+    try {
+      if (!confirm('Delete this workout?')) return;
+      await deleteWorkout(id);
+      await loadWorkouts();
+    } catch (error) {
+      setError('Failed to delete workout');
+    }
   }
 
   return (

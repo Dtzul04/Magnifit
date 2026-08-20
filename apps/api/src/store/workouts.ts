@@ -1,10 +1,17 @@
 import { Pool } from 'pg';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const useMock = process.env.USE_MOCK === 'true' || !process.env.DATABASE_URL;
 
-const pool = new Pool({
+
+// Configure PostgreSQL connection
+const pool = useMock 
+    ? null 
+    : new Pool({
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false },
 });
 
 // workout type
@@ -20,22 +27,22 @@ export type Workout = {
 let workouts: Workout[] = [
     {
         id: 1,
-        name: "Ab Workout",
-        type: "Ab",
+        name: "Abs Workout",
+        type: "Strength",
         duration: 30,
         workout_date: "2026-01-01",
     },
     {
         id: 2,
-        name: "Bicep Workout",
-        type: "Bicep",
+        name: "Running",
+        type: "Cardio",
         duration: 30,
         workout_date: "2026-01-02",
     },
     {
         id: 3,
-        name: "Chest Workout",
-        type: "Chest",
+        name: "Pilates",
+        type: "Flexibility",
         duration: 30,
         workout_date: "2026-01-03",
     }
@@ -53,54 +60,98 @@ export async function getWorkouts(type?: string): Promise<Workout[]> {
         return workouts.filter((w) => w.type === type);
     }
 
-    if (!type) {
-        const result = await pool.query('SELECT * FROM workouts ORDER BY workout_date DESC');
-        return result.rows;
-    } else {
+    if (!pool) {
+        throw new Error('Database connection not established');
+    }
+    try {
+        if (!type) {
+            const result = await pool.query('SELECT * FROM workouts ORDER BY workout_date DESC');
+            return result.rows;
+        }
         const result = await pool.query('SELECT * FROM workouts WHERE type = $1 ORDER BY workout_date DESC', [type]);
         return result.rows;
+    } catch (error) {
+        console.error('Error getting workouts:', error);
+        throw new Error('Failed to get workouts');
     }
 }
 
-// create a new workout
-export function createWorkout(data: {
-    name: string;
-    type: string;
-    duration: number;
-    workout_date: string;
-}): Workout {
-    const workout: Workout = {
-        id: nextId++,
-        name: data.name,
-        type: data.type,
-        duration: data.duration,
-        workout_date: data.workout_date,
+// create a new workout in the database
+export async function createWorkout(data: { name: string; type: string; duration: number; workout_date: string; }): Promise<Workout> {
+    if (useMock) {
+        const workout: Workout = {
+            id: nextId++,
+            name: data.name,
+            type: data.type,
+            duration: data.duration,
+            workout_date: data.workout_date,
+        }
+        workouts.push(workout);
+        return workout;
     }
-    workouts.push(workout);
-    return workout;
+    try {
+        if (!pool) {
+            throw new Error('Database connection not established');
+        }
+        const result = await pool.query (
+            `INSERT INTO workouts (name, type, duration, workout_date) VALUES ($1, $2, $3, $4) RETURNING *`,
+            [data.name, data.type, data.duration, data.workout_date]
+        );
+        return result.rows[0];
+    } catch (error) {
+        console.error('Error creating workout:', error);
+        throw new Error('Failed to create workout');
+    }
 }
 
 // update a workout
-export function updateWorkout(id: number, data: {
-    name: string;
-    type: string;
-    duration: number;
-    workout_date: string;
-}): Workout | null {
-    const index = workouts.findIndex((w) => w.id === id);
-    if (index === -1) {    
-        return null;
+export async function updateWorkout(id: number, data: {name: string; type: string; duration: number; workout_date: string; }): Promise<Workout | null> {
+    if (useMock) {
+        const index = workouts.findIndex((w) => w.id === id);
+        if (index === -1) {
+            return null;
+        }
+        workouts[index] = { id, ...data };
+        return workouts[index];
+    } else {
+        try {
+            if (!pool) {
+                throw new Error('Database connection not established');
+            }
+            const result = await pool.query(
+                `UPDATE workouts SET name = $1, type = $2, duration = $3, workout_date = $4 WHERE id = $5 RETURNING *`,
+                [data.name, data.type, data.duration, data.workout_date, id]
+            );
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error updating workout:', error);
+            return null;
+        }
     }
-    workouts[index] = {id, ...data }
-    return workouts[index];
 }
 
-export function deleteWorkout(id: number): Workout | null {
-    const index = workouts.findIndex((w) => w.id === id);
-
-    if (index ===-1) {
-        return null;
+// delete a workout
+export async function deleteWorkout(id: number): Promise<Workout | null> {
+    if (useMock) {
+        const index = workouts.findIndex((w) => w.id === id);
+        if (index === -1) {
+            return null;
+        }
+        const [deleted] = workouts.splice(index, 1);   
+        return deleted;
+    } else {
+        try {
+            if (!pool) {
+                throw new Error('Database connection not established');
+            }
+            const result = await pool.query(
+                `DELETE FROM workouts WHERE id = $1 RETURNING *`,
+                [id]
+            );
+            return result.rows[0];
+        } catch (error) {
+            console.error('Error deleting workout:', error);
+            return null;
+        }
     }
-    const [removed] = workouts.splice(index, 1);
-    return removed;
 }
